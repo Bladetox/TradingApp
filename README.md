@@ -23,6 +23,42 @@ Run it again -> it picks up wherever the last run left off, because
 pip install -r requirements.txt
 ```
 
+### Logging to Supabase (optional)
+
+By default, if no Supabase key is set, runs are logged to a local `runs.json`
+file. To log to Supabase instead, set an environment variable before running:
+
+```bash
+export SUPABASE_KEY=sb_publishable_xxx
+python3 loop.py
+```
+
+This requires a `runs` table to already exist in the project (see the SQL
+below). The Supabase URL is hardcoded to
+`https://otbaaunfywxixuzsdwrv.supabase.co` — change `SUPABASE_URL` at the top
+of `loop.py` if you're using a different project.
+
+```sql
+create table runs (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  config jsonb not null,
+  metrics jsonb not null,
+  trades jsonb not null
+);
+
+alter table runs enable row level security;
+
+create policy "allow insert with publishable key"
+  on runs for insert to anon with check (true);
+
+create policy "allow read with publishable key"
+  on runs for select to anon using (true);
+```
+
+Never commit your Supabase key to the repo — always pass it as an env
+variable.
+
 ## Run
 
 ```bash
@@ -32,7 +68,7 @@ python3 loop.py
 ## Files
 
 - `config.json` — current strategy parameters (this is what evolves)
-- `runs.json` — every run ever logged, with full trade history (created on first run)
+- `runs.json` — local run log, used only if `SUPABASE_KEY` isn't set (created on first run)
 - `loop.py` — the whole loop
 
 ## Notes

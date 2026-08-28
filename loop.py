@@ -19,11 +19,15 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+import requests
 import yfinance as yf
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(DIR, "config.json")
-RUNS_PATH = os.path.join(DIR, "runs.json")
+RUNS_PATH = os.path.join(DIR, "runs.json")  # local fallback if Supabase isn't reachable
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://otbaaunfywxixuzsdwrv.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")  # set this as an env var, don't hardcode it
 
 # ---------- 1. GENERATE (load current strategy) ----------
 
@@ -139,15 +143,15 @@ def score(trades):
 
 # ---------- 4/5. LOG (persistent state) ----------
 
-def load_runs():
+def load_runs_local():
     if os.path.exists(RUNS_PATH):
         with open(RUNS_PATH) as f:
             return json.load(f)
     return []
 
 
-def log_run(cfg, metrics, trades):
-    runs = load_runs()
+def log_run_local(cfg, metrics, trades):
+    runs = load_runs_local()
     runs.append({
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "config": cfg,
@@ -156,7 +160,35 @@ def log_run(cfg, metrics, trades):
     })
     with open(RUNS_PATH, "w") as f:
         json.dump(runs, f, indent=2)
-    return runs
+    return len(runs)
+
+
+def log_run_supabase(cfg, metrics, trades):
+    resp = requests.post(
+        f"{SUPABASE_URL}/rest/v1/runs",
+        headers={
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        },
+        json={"config": cfg, "metrics": metrics, "trades": trades},
+        timeout=10,
+    )
+    resp.raise_for_status()
+
+
+def log_run(cfg, metrics, trades):
+    """Log to Supabase if a key is configured, otherwise fall back to runs.json."""
+    if SUPABASE_KEY:
+        try:
+            log_run_supabase(cfg, metrics, trades)
+            return "supabase"
+        except Exception as e:
+            print(f"Supabase logging failed ({e}), falling back to runs.json")
+
+    count = log_run_local(cfg, metrics, trades)
+    return f"runs.json (run #{count})"
 
 
 # ---------- 6. UPDATE (the rule that changes config.json for next run) ----------
@@ -204,8 +236,8 @@ def main():
     for k, v in metrics.items():
         print(f"  {k}: {v}")
 
-    runs = log_run(cfg, metrics, trades)
-    print(f"\nLogged run #{len(runs)} to runs.json")
+    destination = log_run(cfg, metrics, trades)
+    print(f"\nLogged run to {destination}")
 
     new_cfg, notes = update_config(cfg, metrics)
     print("\nUpdate rule decision:")
