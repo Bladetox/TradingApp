@@ -59,11 +59,16 @@ create policy "allow read with publishable key"
 Never commit your Supabase key to the repo — always pass it as an env
 variable.
 
-## Run
+## Viewing the ledger (no terminal needed)
 
-```bash
-python3 loop.py
-```
+`docs/index.html` is a self-contained dashboard that reads the `runs` table
+straight from Supabase. Once GitHub Pages is enabled for this repo, it's live
+at `https://bladetox.github.io/TradingApp/` — nothing to download or run.
+
+It shows the current strategy config, an expectancy trend across runs, and a
+full run ledger with a pass/fail marker per run (expectancy > 0, profit
+factor > 1.5, drawdown better than -15%).
+
 
 ## Files
 
