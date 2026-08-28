@@ -23,12 +23,14 @@
 
   * { box-sizing: border-box; }
 
+  html { -webkit-text-size-adjust: 100%; }
+
   body {
     margin: 0;
     background: var(--ink);
     color: var(--text);
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
+    font-size: clamp(13px, 0.9vw + 10px, 14px);
     line-height: 1.5;
   }
 
@@ -42,6 +44,8 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     border-bottom: 1px solid var(--rule);
     padding-bottom: 20px;
     margin-bottom: 32px;
@@ -50,7 +54,7 @@
   h1 {
     font-family: 'Source Serif 4', serif;
     font-weight: 600;
-    font-size: 26px;
+    font-size: clamp(21px, 4vw, 26px);
     letter-spacing: 0.01em;
     margin: 0;
     color: var(--text);
@@ -106,10 +110,24 @@
     font-size: 15px;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
+    word-break: break-word;
   }
+
+  /* Scrollable wrapper so the full ledger stays intact on narrow screens
+     instead of dropping columns. */
+  .table-wrap {
+    position: relative;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid transparent;
+  }
+
+  .table-wrap::-webkit-scrollbar { height: 6px; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
 
   table {
     width: 100%;
+    min-width: 560px;
     border-collapse: collapse;
   }
 
@@ -122,6 +140,7 @@
     font-weight: 400;
     padding: 0 12px 10px;
     border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
   }
 
   thead th.num { text-align: right; }
@@ -173,6 +192,7 @@
     padding: 2px 6px;
     border: 1px solid var(--rule);
     color: var(--brass);
+    word-break: break-word;
   }
 
   footer {
@@ -183,6 +203,8 @@
     font-size: 11px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
 
   footer button {
@@ -193,12 +215,49 @@
     font-size: 11px;
     padding: 5px 12px;
     cursor: pointer;
+    min-height: 44px;
+    min-width: 44px;
   }
 
   footer button:hover { color: var(--text); border-color: var(--text-dim); }
 
+  /* --- Mobile breakpoint --- */
   @media (max-width: 640px) {
-    thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+    .page { padding: 28px 16px 56px; }
+
+    header {
+      flex-direction: column;
+      align-items: flex-start;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+
+    .ticker { text-align: left; font-size: 14px; }
+
+    section { margin-bottom: 28px; }
+
+    .config-strip { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+    .config-cell { padding: 10px 12px; }
+    .config-cell .v { font-size: 13.5px; }
+
+    .chart-wrap { padding: 14px; }
+
+    /* Full ledger data stays reachable via horizontal scroll rather than
+       being dropped, but rows/paddings shrink to fit more per screen. */
+    table { min-width: 620px; font-size: 12.5px; }
+    thead th, tbody td { padding: 9px 10px; }
+
+    .empty { padding: 24px 16px; }
+
+    footer {
+      font-size: 11px;
+    }
+    footer button { padding: 8px 16px; }
+  }
+
+  @media (max-width: 380px) {
+    h1 { font-size: 19px; }
+    .subtitle { font-size: 11px; }
   }
 </style>
 </head>
@@ -227,20 +286,22 @@
 
   <section id="tableSection" style="display:none">
     <div class="section-label">Runs</div>
-    <table>
-      <thead>
-        <tr>
-          <th></th>
-          <th>Logged</th>
-          <th class="num">Trades</th>
-          <th class="num">Win rate</th>
-          <th class="num">Expectancy</th>
-          <th class="num">Profit factor</th>
-          <th class="num">Max drawdown</th>
-        </tr>
-      </thead>
-      <tbody id="runRows"></tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Logged</th>
+            <th class="num">Trades</th>
+            <th class="num">Win rate</th>
+            <th class="num">Expectancy</th>
+            <th class="num">Profit factor</th>
+            <th class="num">Max drawdown</th>
+          </tr>
+        </thead>
+        <tbody id="runRows"></tbody>
+      </table>
+    </div>
   </section>
 
   <section id="emptySection" style="display:none">
